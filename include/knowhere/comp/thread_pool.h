@@ -175,7 +175,8 @@ class ThreadPool {
             std::lock_guard<std::mutex> lock(build_pool_mutex_);
             if (build_pool_ == nullptr) {
                 build_pool_ = std::make_shared<ThreadPool>(num_threads, "knowhere_build");
-                LOG_KNOWHERE_INFO_ << "Init global build thread pool with size " << num_threads;
+                // build_pool_ = std::make_shared<ThreadPool>(static_cast<uint32_t>(1), "knowhere_build");
+                //                LOG_KNOWHERE_INFO_ << "Init global build thread pool with size " << num_threads;
                 return;
             }
         } else {
@@ -195,7 +196,9 @@ class ThreadPool {
             std::lock_guard<std::mutex> lock(search_pool_mutex_);
             if (search_pool_ == nullptr) {
                 search_pool_ = std::make_shared<ThreadPool>(num_threads, "knowhere_search");
-                LOG_KNOWHERE_INFO_ << "Init global search thread pool with size " << num_threads;
+                //                search_pool_ = std::make_shared<ThreadPool>(static_cast<uint32_t>(1),
+                //                "knowhere_search"); LOG_KNOWHERE_INFO_ << "Init global search thread pool with size "
+                //                << num_threads;
                 return;
             }
         } else {
