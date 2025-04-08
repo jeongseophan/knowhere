@@ -36,6 +36,8 @@
 #include "knowhere/index/index_factory.h"
 #include "utils.h"
 
+// int operation_count = 0;
+
 namespace {
 
 template <typename T = float>
@@ -448,15 +450,14 @@ TEST_CASE("Search for FAISS HNSW Indices", "Benchmark and validation") {
     // const int32_t TOPK = 64;
 
     // for unit tests
-    //    const std::vector<int32_t> DIMS = {1024};  // dimensions in hnsw
-    const std::vector<int32_t> DIMS = {8};  // dimensions in hnsw
+    const std::vector<int32_t> DIMS = {1024};
 
     //    const std::vector<int32_t> NBS = {100000};  // max_elements in hnsw
     //    const std::vector<int32_t> NBS = {256};    // max_elements in hnsw
-    const std::vector<size_t> NBS = {256};
-    // const std::vector<int32_t> NBS = {100000};  // max_elements in hnsw
+    // const std::vector<size_t> NBS = {256};
+    const std::vector<int32_t> NBS = {10000};  // max_elements in hnsw
 
-    const int32_t NQ = 256;  // number of queries
+    const int32_t NQ = 10000;  // number of queries
 
     // const int32_t NQ = 100000;  // number of queries
     //    const int32_t NQ = 100;  // number of queries
@@ -518,7 +519,7 @@ TEST_CASE("Search for FAISS HNSW Indices", "Benchmark and validation") {
 
     std::cout << " hnsw_m: " << default_conf[knowhere::indexparam::HNSW_M]
               << " efConstruction: " << default_conf[knowhere::indexparam::EFCONSTRUCTION]
-              << " ef: " << default_conf[knowhere::indexparam::EF] << " IP distance " << std::endl;
+              << " ef: " << default_conf[knowhere::indexparam::EF] << " L2 distance " << std::endl;
 
     // create golden indices for search
     {

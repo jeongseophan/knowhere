@@ -4,7 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
+// #pragma once
 #include <faiss/IndexHNSW.h>
 
 #include <omp.h>
@@ -34,6 +34,8 @@
 #include <faiss/utils/distances.h>
 #include <faiss/utils/random.h>
 #include <faiss/utils/sorting.h>
+
+// extern int operation_count = 0;
 
 extern "C" {
 
@@ -84,6 +86,7 @@ void hnsw_add_vertices(
         const float* x,
         bool verbose,
         bool preset_levels = false) {
+    std::cout << "executed just once ! asdfasdf" << std::endl;
     size_t d = index_hnsw.d;
     HNSW& hnsw = index_hnsw.hnsw;
     size_t ntotal = n0 + n;
@@ -172,10 +175,21 @@ void hnsw_add_vertices(
                         verbose && omp_get_thread_num() == 0 ? 0 : -1;
                 size_t counter = 0;
 
+                //                auto start =
+                //                std::chrono::high_resolution_clock::now();
+
                 // here we should do schedule(dynamic) but this segfaults for
                 // some versions of LLVM. The performance impact should not be
                 // too large when (i1 - i0) / num_threads >> 1
+
+                // std::cout << "******************* how many times?: "
+                //           << std::endl;
+                // std::cout << " i0: " << i0 << " i1: " << i1 << std::endl;
+                // auto start = std::chrono::high_resolution_clock::now();
+                //                operation_count++;
+
 #pragma omp for schedule(static)
+
                 for (int i = i0; i < i1; i++) {
                     storage_idx_t pt_id = order[i];
                     dis->set_query(x + (pt_id - n0) * d);
@@ -184,7 +198,6 @@ void hnsw_add_vertices(
                     if (interrupt) {
                         continue;
                     }
-
                     hnsw.add_with_locks(
                             *dis,
                             pt_level,
@@ -205,6 +218,12 @@ void hnsw_add_vertices(
                     }
                     counter++;
                 }
+                // auto end = std::chrono::high_resolution_clock::now();
+                // auto duration = std::chrono::duration<double>(end - start);
+                // std::cout << "******************* middle chk: "
+                //           << duration.count()
+                //           << " seconds ****************************"
+                //           << std::endl;
             }
             if (interrupt) {
                 FAISS_THROW_MSG("computation interrupted");
@@ -224,6 +243,8 @@ void hnsw_add_vertices(
     for (int i = 0; i < ntotal; i++) {
         omp_destroy_lock(&locks[i]);
     }
+    // std::cout << "ndis = " << hnsw_stats.ndis
+    //           << ", nhops = " << hnsw_stats.nhops << std::endl;
 }
 
 } // namespace
