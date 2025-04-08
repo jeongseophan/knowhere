@@ -4,8 +4,10 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
-
+// #pragma once
+// #pragma once
 #include <faiss/impl/HNSW.h>
+// #include <faiss/IndexHNSW.cpp>
 
 #include <cstddef>
 #include <string>
@@ -17,6 +19,8 @@
 #include <faiss/utils/prefetch.h>
 
 #include <faiss/impl/platform_macros.h>
+
+using Clock = std::chrono::high_resolution_clock;
 
 #ifdef __AVX2__
 #include <immintrin.h>
@@ -394,7 +398,8 @@ void search_neighbors_to_add(
         //     float dis = qdis(nodeId);
         //     NodeDistFarther evE1(dis, nodeId);
 
-        //     if (results.size() < hnsw.efConstruction || results.top().d > dis) {
+        //     if (results.size() < hnsw.efConstruction || results.top().d >
+        //     dis) {
         //         results.emplace(dis, nodeId);
         //         candidates.emplace(dis, nodeId);
         //         if (results.size() > hnsw.efConstruction) {
@@ -404,7 +409,8 @@ void search_neighbors_to_add(
         // }
 
         // the following version processes 4 neighbors at a time
-        auto update_with_candidate = [&](const storage_idx_t idx, const float dis) {
+        auto update_with_candidate = [&](const storage_idx_t idx,
+                                         const float dis) {
             if (results.size() < hnsw.efConstruction || results.top().d > dis) {
                 results.emplace(dis, idx);
                 candidates.emplace(dis, idx);
@@ -413,7 +419,7 @@ void search_neighbors_to_add(
                 }
             }
         };
-        
+
         int n_buffered = 0;
         storage_idx_t buffered_ids[4];
 
@@ -454,7 +460,6 @@ void search_neighbors_to_add(
             float dis = qdis(buffered_ids[icnt]);
             update_with_candidate(buffered_ids[icnt], dis);
         }
-
     }
 
     vt.advance();
@@ -479,7 +484,7 @@ HNSWStats greedy_update_nearest(
         size_t begin, end;
         hnsw.neighbor_range(nearest, level, &begin, &end);
 
-        // // baseline version 
+        // // baseline version
         // size_t ndis = 0;
         // for (size_t i = begin; i < end; i++) {
         //     storage_idx_t v = hnsw.neighbors[i];
@@ -494,11 +499,12 @@ HNSWStats greedy_update_nearest(
         // }
 
         // the following version processes 4 neighbors at a time
-        auto update_with_candidate = [&](const storage_idx_t idx, const float dis) {
+        auto update_with_candidate = [&](const storage_idx_t idx,
+                                         const float dis) {
             if (dis < d_nearest) {
                 nearest = idx;
                 d_nearest = dis;
-            }        
+            }
         };
 
         size_t ndis = 0;
@@ -602,6 +608,11 @@ void HNSW::add_with_locks(
         std::vector<omp_lock_t>& locks,
         VisitedTable& vt,
         bool keep_max_size_level0) {
+    auto t0 = Clock::now();
+
+    //    operation_count++;
+    //   std::cout << "******************* operation_count: " << std::endl;
+
     //  greedy search on upper levels
 
     storage_idx_t nearest;
@@ -618,15 +629,22 @@ void HNSW::add_with_locks(
     if (nearest < 0) {
         return;
     }
+    auto t1 = Clock::now();
 
     omp_set_lock(&locks[pt_id]);
 
     int level = max_level; // level at which we start adding neighbors
     float d_nearest = ptdis(nearest);
 
+    // std::cout << "******************* level: " << level
+    //           << " ****************************" << std::endl;
+    auto t2 = Clock::now();
+
     for (; level > pt_level; level--) {
         greedy_update_nearest(*this, ptdis, level, nearest, d_nearest);
     }
+    // auto t3 = Clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
 
     for (; level >= 0; level--) {
         add_links_starting_from(
@@ -639,6 +657,11 @@ void HNSW::add_with_locks(
                 vt,
                 keep_max_size_level0);
     }
+    // auto end = std::chrono::high_resolution_clock::now();
+    // auto duration = std::chrono::duration<double>(end - start);
+    // std::cout << "Elapsed time: " << duration.count() << " seconds"
+    //           << std::endl;
+    // auto t4 = Clock::now();
 
     omp_unset_lock(&locks[pt_id]);
 
@@ -646,6 +669,18 @@ void HNSW::add_with_locks(
         max_level = pt_level;
         entry_point = pt_id;
     }
+    auto t5 = Clock::now();
+    // std::cout << "TIMING: " << "init: "
+    //           << std::chrono::duration<float, std::milli>(t1 - t0).count()
+    //           << "ms, " << "lock: "
+    //           << std::chrono::duration<float, std::milli>(t2 - t1).count()
+    //           << "ms, " << "greedy: "
+    //           << std::chrono::duration<float, std::milli>(t3 - t2).count()
+    //           << "ms, " << "add_links: "
+    //           << std::chrono::duration<float, std::milli>(t4 - t3).count()
+    //           << "ms, " << "post: "
+    //           << std::chrono::duration<float, std::milli>(t5 - t4).count()
+    //           << "ms" << std::endl;
 }
 
 /**************************************************************
